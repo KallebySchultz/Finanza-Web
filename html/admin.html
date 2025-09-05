@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Finanza Desktop</title>
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="icon" href="../IMAGENS/logo.png">
+    <!-- Firebase SDK compat -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <div id="sidebar"></div>
+        <div class="main-content">
+            <div id="header"></div>
+            <div id="debug" style="color: red; margin: 10px 0;"></div>
+            <div id="adminStats" class="stats-grid"></div>
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Usuários do Sistema</h2>
+                </div>
+                <div id="usersList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAtmg3jhdlvF_GJmfLRt_bHCGRw_nWSMCo",
+            authDomain: "finanza-2cd68.firebaseapp.com",
+            databaseURL: "https://finanza-2cd68-default-rtdb.firebaseio.com",
+            projectId: "finanza-2cd68",
+            storageBucket: "finanza-2cd68.appspot.com",
+            messagingSenderId: "991299806624",
+            appId: "1:991299806624:web:12782bf4a0ab6ed52630c5",
+            measurementId: "G-M1TCD97PRW"
+        };
+        firebase.initializeApp(firebaseConfig);
+
+        const adminEmails = [
+            'kallebyschultz@gmail.com'
+        ];
+
+        function debug(msg) {
+            document.getElementById('debug').innerText = msg;
+            console.log(msg);
+        }
+
+        function generateSidebar(user) {
+            return `
+            <div class="sidebar">
+                <div class="sidebar-user">
+                    <div><strong>${user.displayName || user.email}</strong></div>
+                </div>
+                <ul class="sidebar-menu">
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                    <li><a href="admin.html" class="active">Admin</a></li>
+                    <li><a href="#" onclick="logout()">Sair</a></li>
+                </ul>
+            </div>`;
+        }
+
+        function generateHeader(title, user) {
+            return `
+            <div class="header">
+                <h1>${title}</h1>
+                <div class="header-user">
+                    <span>${user.displayName || user.email}</span>
+                </div>
+            </div>`;
+        }
+
+        function logout() {
+            firebase.auth().signOut().then(() => {
+                window.location.href = "login.html";
+            });
+        }
+
+        firebase.auth().onAuthStateChanged(async function(user) {
+            if (!user) {
+                debug('Usuário não logado. Redirecionando...');
+                window.location.href = "login.html";
+                return;
+            }
+            debug('Usuário autenticado: ' + user.email);
+
+            if (!adminEmails.includes(user.email)) {
+                debug('Usuário não autorizado (não é admin). Redirecionando...');
+                window.location.href = "dashboard.html";
+                return;
+            }
+            debug('Usuário autorizado! Renderizando página admin.');
+
+            document.getElementById('sidebar').innerHTML = generateSidebar(user);
+            document.getElementById('header').innerHTML = generateHeader('Painel Administrativo', user);
+
+            await loadAdminStats();
+            await loadUsers();
+        });
+
+        async function getAllUsers() {
+            try {
+                const db = firebase.database();
+                const snapshot = await db.ref('usuarios').once('value');
+                const data = snapshot.val();
+                debug('Dados lidos de /usuarios: ' + JSON.stringify(data));
+                if (!data) return [];
+                return Object.values(data);
+            } catch (e) {
+                debug('Erro ao acessar RTDB: ' + e);
+                return [];
+            }
+        }
+
+        async function loadAdminStats() {
+            const users = await getAllUsers();
+            document.getElementById('adminStats').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value stat-accounts">${users.length}</div>
+                    <div class="stat-label">Total de Usuários</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value stat-income">-</div>
+                    <div class="stat-label">Total de Contas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value stat-expense">-</div>
+                    <div class="stat-label">Total de Transações</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value stat-balance">-</div>
+                    <div class="stat-label">Volume Total</div>
+                </div>
+            `;
+        }
+
+        async function loadUsers() {
+            const users = await getAllUsers();
+            if (!users || users.length === 0) {
+                document.getElementById('usersList').innerHTML = `
+                    <p class="text-center">Nenhum usuário encontrado.</p>
+                `;
+                debug('Nenhum usuário encontrado em /usuarios');
+                return;
+            }
+            const usersHTML = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Email</th>
+                            <th>Data de Criação</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map(user => `
+                            <tr>
+                                <td>${user.id}</td>
+                                <td>${user.nome}</td>
+                                <td>${user.email}</td>
+                                <td>${user.data_criacao ? new Date(Number(user.data_criacao)).toLocaleDateString('pt-BR') : '-'}</td>
+                                <td><span style="color: #48bb78;">Ativo</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('usersList').innerHTML = usersHTML;
+            debug('Usuários renderizados!');
+        }
+    </script>
+</body>
+</html>

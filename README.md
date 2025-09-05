@@ -1,6 +1,6 @@
 # 💰 Finanza Web - Sistema de Gestão Financeira Pessoal
 
-![Logo Finanza](IMAGENS/logo - pequena.png)
+![Logo Finanza](IMAGENS/logo2.png)
 
 ## 📋 Índice
 

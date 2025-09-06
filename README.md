@@ -696,6 +696,4 @@ Contribuições são bem-vindas! Para contribuir:
 
 ---
 
-**Desenvolvido com ❤️ para gestão financeira pessoal**
-
-*Última atualização: Dezembro 2024*
+**Desenvolvido por Kalleby Schultz**
